@@ -1,54 +1,58 @@
 package org.itbcafrica.microservice;
 
+
 import org.itbcafrica.microservice.beans.Project;
 
-import javax.annotation.PostConstruct;
+import javax.inject.Inject;
+import javax.persistence.EntityManager;
+import javax.persistence.NoResultException;
+import javax.transaction.Transactional;
 import javax.ws.rs.*;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
-import java.util.ArrayList;
 import java.util.List;
 
 @Path("/projects")
 @Produces(MediaType.APPLICATION_JSON)
 public class ProjectResource{
 
-    List<Project> projectList=new ArrayList<>();
 
-    @PostConstruct
-    public void setup(){
-        projectList.add(new Project(637245L, "Simple Project", 5, 6, "NEW"));
-        projectList.add(new Project(637246L, "Java Project", 5, 6, "DELAYED"));
-        projectList.add(new Project(637247L, "Maven Project", 6, 7, "IN_PROGRESS"));
-        projectList.add(new Project(637248L, "Focker Project", 10, 16, "new"));
-
-    }
+    @Inject
+    EntityManager entityManager;
 
     @GET
     public List<Project> getAllProjects(){
-        return projectList;
+        return entityManager.createNamedQuery("Projects.findAll", Project.class).getResultList();
     }
 
     @GET
     @Path("/{projectId}")
     public Project getProjectById(@PathParam("projectId") Long projectId){
-        return projectList.stream().filter(project->project.getProjectId().equals(projectId)).findFirst().orElseThrow(()->new NotFoundException("project with id "+projectId+" not found"));
+        try{
+            return entityManager.createNamedQuery("Projects.findByProjectId", Project.class).setParameter("projectId", projectId).getSingleResult();
+        } catch(NoResultException nre){
+            throw new NotFoundException("project with id "+projectId+" not found");
+        }
+
     }
 
     @POST
     @Consumes(MediaType.APPLICATION_JSON)
+    @Transactional
     public Response createProject(Project project){
         if(project.getProjectId()==null)
             throw new WebApplicationException("Aproject with no id cannot be created", 400);
-        projectList.add(project);
+        entityManager.persist(project);
         return Response.status(Response.Status.CREATED).entity(project).build();
     }
 
     @PUT
     @Path("/{projectId}/changeStatus")
+    @Transactional
     public Project changeStatusOfProject(@PathParam("projectId") Long projectId, String status){
         Project searchedProject=getProjectById(projectId);
         searchedProject.setProjectStatus(status);
+        entityManager.merge(searchedProject);
         return searchedProject;
     }
 
@@ -56,7 +60,8 @@ public class ProjectResource{
     @Path("/{projectId}")
     public Response deleteProject(@PathParam("projectId") Long projectId){
         Project searchedProject=getProjectById(projectId);
-        projectList.remove(searchedProject);
+        searchedProject.setProjectStatus("CLOSED");
+        //entityManager.remove(searchedProject);
         return Response.noContent().build();
     }
 }
