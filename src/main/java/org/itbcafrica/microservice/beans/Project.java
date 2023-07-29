@@ -21,6 +21,7 @@ public class Project{
     private int durationInMonths;
     private int numResourcesAllocated;
     private String projectStatus;
+    private String clientName;
 
     @Id
     @SequenceGenerator(name="projectIdSequenceGenerator", sequenceName="project_id_seq", allocationSize=1, initialValue=1)

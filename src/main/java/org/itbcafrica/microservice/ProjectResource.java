@@ -1,6 +1,7 @@
 package org.itbcafrica.microservice;
 
 
+import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.itbcafrica.microservice.beans.Project;
 
 import javax.inject.Inject;
@@ -19,6 +20,9 @@ public class ProjectResource{
 
     @Inject
     EntityManager entityManager;
+
+    @ConfigProperty(name="client.config", defaultValue="Decoded Byte in Client")
+    private String clientName;
 
     @GET
     public List<Project> getAllProjects(){
@@ -41,7 +45,10 @@ public class ProjectResource{
     @Transactional
     public Response createProject(Project project){
         if(project.getProjectId()==null)
-            throw new WebApplicationException("Aproject with no id cannot be created", 400);
+            throw new WebApplicationException("A project with no id cannot be created", 400);
+        if(project.getClientName()==null){
+            project.setClientName(clientName);
+        }
         entityManager.persist(project);
         return Response.status(Response.Status.CREATED).entity(project).build();
     }
